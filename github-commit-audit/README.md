@@ -1,34 +1,66 @@
-# Github Organization Repository Monthly Audit By Commits of Repository Members or Contributors
+# GitHub Organization Repository Commit Audit Tool
 
-First of all download the files in this folder to you desired folder in your pc or server. Also setup the `mailx` for sending mail to distribution lists.
+A tool to generate monthly audit reports of repository commits by members and contributors across your GitHub organization.
 
-## Step-1 Download all the necessary required packages
+## Prerequisites
 
-```bash
-pip3 install -r requirements.txt
-```
+- Python 3.10
+- `mailx` utility configured for email distribution
+- GitHub Personal Access Token
+- Required Python packages (specified in requirements.txt)
 
-## Step-2 Get your github personal access token
+## Installation
 
-Get your github personal access token and make sure you have export it into your OS env variable by `GH_PAT` name.
+1. Clone this repository or download the files to your target directory
+2. Install the required Python packages:
+   ```bash
+   pip3 install -r requirements.txt
+   ```
+3. Configure your GitHub Personal Access Token:
+   ```bash
+   export GH_PAT="your_github_token"
+   ```
 
-## Step-3 Add the emails to sent audit information
+## Configuration
 
-Place the `emails` separated by space into the `MAILUSERS` variable in the script `audit-gen-with-mailing.sh`
+### Email Distribution Setup
 
-## Step-4 Give the desired variables for auditing
+Edit `audit-gen-with-mailing.sh` to configure email recipients:
+- Add email addresses (space-separated) to the `MAILUSERS` variable
 
-Firstly `is_period` if you want to use duration like from start month to after two months auditing. Then set this variable `is_period` to 1 and also set the variables `MONTH_START` and `PERIOD` as well. Otherwise you want to get audit from a month range then set this variable  `is_period` to 0 and also set the variables `MONTH_START` and `MONTH_END`.
+### Audit Period Configuration
 
-## Step-5 Give Execute permission to `audit-gen-with-mailing.sh` script
+The tool supports two modes of operation:
 
-```bash
-chmod +x ./audit-gen-with-mailing.sh
-```
-## Step-6 Execute the script
+1. **Period-based Audit**
+   - Set `is_period=1`
+   - Configure:
+     - `MONTH_START`: Starting month
+     - `PERIOD`: Number of months to audit
 
-```bash
-./audit-gen-with-mailing.sh
-```
+2. **Date Range Audit**
+   - Set `is_period=0`
+   - Configure:
+     - `MONTH_START`: Start month of range
+     - `MONTH_END`: End month of range
 
-After a successful execution you will notice some `<Team_Name>-<Month_Start>-to-<Month_End></Month_End>-audit.csv` files in the current directory which will be sent over email to the distributions.
+## Usage
+
+1. Make the script executable:
+   ```bash
+   chmod +x ./audit-gen-with-mailing.sh
+   ```
+
+2. Run the audit:
+   ```bash
+   ./audit-gen-with-mailing.sh
+   ```
+
+## Output
+
+The script generates CSV files in the following format:
+`<Team_Name>-<Month_Start>-to-<Month_End>-audit.csv`
+
+These reports are automatically:
+- Generated in the current directory
+- Sent to the configured email distribution list
