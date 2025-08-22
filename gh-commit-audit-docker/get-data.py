@@ -80,7 +80,7 @@ def getfilteredRepositories(repos, org_name):
     for repo in repos :
         repoDetails = getRepoDetails(org_name, repo['name'])
         if repoDetails is not None  and isAuditNeeded(repoDetails):
-                repoLinks.append(f'{repo['html_url']}.git')
+                repoLinks.append(f'{repo["html_url"]}.git')
     return repoLinks
 
 def getRepoList(org_name):
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     # extracting the teamId
     teamId = sys.argv[2]
     
-
+    print(f"[INFO] Fetching data for org {orgName} and team {teamId}")
     if getRepoList(orgName) == True :
         logging.debug(f'[SUCCESS] repos.txt file successfully populated with filtered data')
     if getUserList(orgName, teamId) == True :

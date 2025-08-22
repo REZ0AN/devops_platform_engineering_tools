@@ -1,58 +1,86 @@
-# Github Commit audit by Month Range
+# GitHub Commit Audit Tool
 
-## Step-1 Create necessary directories 
+A containerized solution for generating commit audit reports across GitHub organizations. This tool allows you to analyze commit patterns within specified date ranges or periods across teams and repositories.
 
-After pulling this branch, create two folders, inside `audits` and `logs/error`, in the current directory `gh-commit-audit-docker` using the following command:
+## Prerequisites
 
+- Docker installed on your system
+- GitHub Personal Access Token with appropriate permissions
+- Organization Admin access or appropriate team permissions
+
+## Quick Start
+
+1. Clone the repository:
+```bash
+git clone https://github.com/REZ0AN/devops_platform_engineering_tools.git
+cd gh-commit-audit-docker
+```
+
+2. Create required directories:
 ```bash
 mkdir -p ./audits ./logs/error
 ```
-## Step-2 Provide `ORG_NAME` and `TEAM_ID`
 
-Give your `ORG_NAME` and `TEAM_ID` inside the **audit-gen.sh** script.
+3. Configure environment variables:
 
+Create a `.env` file in the project root with the following configuration:
 ```bash
-ORG_NAME=<your-org-name>
+ORG_NAME=<your-organization-name>
 TEAM_ID=<your-team-id>
+MONTH_START=2024-01
+MONTH_END=2024-02
+IS_PERIOD=0
+PERIOD=3
+GH_PAT=<your-github-personal-access-token>
 ```
-## Step-3 Time Range Configuration
 
-Configure the audit period on the `audit-gen.sh` script using one of these methods:
+## Configuration Options
 
-### **Option 1: Duration-based**
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `ORG_NAME` | GitHub Organization name | None | Yes |
+| `TEAM_ID` | Team identifier for filtering | None | Yes |
+| `MONTH_START` | Start month (YYYY-MM format) | None | Yes |
+| `MONTH_END` | End month (YYYY-MM format) | None | If IS_PERIOD=0 |
+| `IS_PERIOD` | Enable period-based auditing | 0 | If period based auditing needed |
+| `PERIOD` | Number of months to audit | 3 | If IS_PERIOD=1 |
+| `GH_PAT` | GitHub Personal Access Token | None | Yes |
 
-```bash
-is_period=1      // Enable duration mode
-MONTH_START="YYYY-MM"  // Starting month (e.g., "2025-01")
-MONTH_END="YYYY-MM" // optional
-PERIOD=2         // Number of months to audit
-```
-### **Option 2: Range-based**
+## Usage
 
-```bash
-is_period=0      // Enable range mode
-MONTH_START="YYYY-MM"  // First month to audit (e.g., "2025-01")
-MONTH_END="YYYY-MM"    // Last month to audit (e.g., "2025-03")
-PERIOD=2 // optional
-```
-## Step-4 Building Docker Image
-
+1. Build the Docker image:
 ```bash
 docker build -t gh-audit .
 ```
-## Step-5 Run Docker Container 
 
-Use this command to run the container, which will execute the scripts, generate the outputs, and then automatically stop the container.
-
+2. Run the audit:
 ```bash
-docker run -e GH_PAT=<github-personal-access-token> \
--v $(pwd)/audits:/app/audits \
--v $(pwd)/logs:/app/logs \
-gh-audit
+docker run --env-file .env \
+  -v $(pwd)/audits:/app/audits \
+  -v $(pwd)/logs:/app/logs \
+  gh-audit
 ```
 
-## Step-6 Debuging
+## Output
 
-After the `container` stops **successfully**, verify the `audits` folder for generated audit files. If the folder is empty or the unexpected things are noticed, review the `logs` folder and `logs/error/` folder for details.
+- Audit reports are generated in the `./audits` directory
+- Log files are stored in `./logs` directory
+- Error logs can be found in `./logs/error`
 
-**Note**: In the current directory you must have these folders `audits` and `logs/error/`.
+## Troubleshooting
+
+1. Check error logs:
+```bash
+cat ./logs/error/*.log
+```
+
+2. Common issues:
+   - Empty audit files: Verify GitHub token permissions
+   - No output: Check logs for API rate limiting
+   - Container exits: Ensure valid environment variables
+
+## Security Notes
+
+- Store your `.env` file securely and never commit it to version control
+- Use GitHub tokens with minimum required permissions
+- Regularly rotate your GitHub Personal Access Token

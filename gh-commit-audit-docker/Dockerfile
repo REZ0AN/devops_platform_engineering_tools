@@ -12,6 +12,7 @@ COPY get-data.py /app/
 COPY monthly-audit.py /app/
 COPY audit-gen.sh /app
 COPY requirements.txt /app/
+COPY .env /app/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt 
