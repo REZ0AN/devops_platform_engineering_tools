@@ -38,6 +38,7 @@ def getUserList(org_name, team_id):
             "org_name":org_name,
             "team_id":team_id
         }
+        print(f"[INFO] Fetching users of a team {team_id} in org {org_name}")
         logging.debug(f'[INFO] Fetching user-lists {org_name} {team_id}')
         response = requests.get(url, params=params)
         if response.status_code == 200:
@@ -60,6 +61,7 @@ def getRepoDetails(org_name, repo_name):
             "org_name":org_name,
             "repo_name":repo_name,
         }
+        print(f"[INFO] Fetching repo-details of org {org_name} repo {repo_name}")
         logging.debug(f'[INFO] Fetching repo-details {org_name} {repo_name}')
         response = requests.get(url, params=params)
         if response.status_code == 200:
@@ -69,6 +71,7 @@ def getRepoDetails(org_name, repo_name):
         else:
             response.raise_for_status()
     except Exception as e :
+            print(f"[error] failed to fetch repo-details of org {org_name} repo {repo_name}")
             logging.error(f"Error occurred while fetching repo-details from org {org_name} repo {repo_name} : {e}")
             return None  
 
@@ -89,7 +92,7 @@ def getRepoList(org_name):
         params = {
             "org_name":org_name
         }
-
+        print(f"[INFO] Fetching repos of org {org_name}")
         logging.debug(f'[INFO] Fetching repo-lists {org_name}')
         response = requests.get(url, params=params)
         if response.status_code == 200:
@@ -101,13 +104,16 @@ def getRepoList(org_name):
         else:
             response.raise_for_status()
     except Exception as e :
+            print(f"[error] failed to fetch repos of org {org_name}")
             logging.error(f"Error occurred while fetching repos from org {org_name} : {e}")
             return False
         
 if __name__ == "__main__":
-     
+
+    print(f"************************* RUNNING get-data.py ********************************")
     # Get the usernames passed as an argument
     if len(sys.argv) < 3:
+        print(f"[ERROR] program argument not provided expected two argument 1st ORG_NAME 2nd TEAM_ID")
         logging.error(f"[ERROR] program argument not provided expected two argument 1st ORG_NAME 2nd TEAM_ID")
         sys.exit(1)
 
@@ -118,8 +124,11 @@ if __name__ == "__main__":
     
     print(f"[INFO] Fetching data for org {orgName} and team {teamId}")
     if getRepoList(orgName) == True :
+        print(f"[SUCCESS] repos.txt file successfully populated with filtered data")
         logging.debug(f'[SUCCESS] repos.txt file successfully populated with filtered data')
     if getUserList(orgName, teamId) == True :
+        print(f"[SUCCESS] team_users.txt file successfully populated with users data")
         logging.debug(f'[SUCCESS] team_users.txt file successfully populated with users data')
+    print(f"************************* COMPLETED get-data.py ********************************")
         
 

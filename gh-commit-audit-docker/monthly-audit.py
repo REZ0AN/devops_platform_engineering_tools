@@ -34,6 +34,7 @@ def get_user_commits(config, user):
         "since": config["SINCE"],
         "until": config["UNTIL"]
     }
+    print(f"[INFO] Fetching commits for user {user} in repository {config['REPO_NAME']}")
     logging.debug(f'[INFO] Fetching commits for user {user} in repository {config["REPO_NAME"]}')
     response = requests.get(url, headers=config['HEADERS'], params=params)
 
@@ -42,6 +43,7 @@ def get_user_commits(config, user):
     if response.status_code == 200:
         commits = response.json()
         if commits == []:
+            print(f"[WARNING] {user} may not a contibutor to the repository {config['REPO_NAME']}")
             logging.debug(f'[WARNING] {user} may not a contibutor to the repository {config["REPO_NAME"]}')   
             return df
         for commit in commits:
@@ -55,6 +57,7 @@ def get_user_commits(config, user):
             }
             n_df = pd.DataFrame([commit_data])
             df = pd.concat([df,n_df],ignore_index=True)
+        print(f"[SUCCESS] Commits fetched for user {user} in repository {config['REPO_NAME']}")
         logging.debug(f'[SUCCESS] Commits fetched for user {user} in repository {config["REPO_NAME"]}')
         return df
     else:
@@ -71,6 +74,7 @@ def audit_commits(config,users):
             df = pd.concat([df,commits],ignore_index=True)
             time.sleep(5)
         except Exception as e:
+            print(f"[error] failed to fetch commits for user {user} in repository {config['REPO_NAME']}")
             logging.error(f"Error occurred while fetching commits for user {user} in repository {repo}: {e}")
             continue
     df.drop_duplicates(inplace=True)
@@ -88,9 +92,10 @@ def save_csv_with_meta_info(dataframe, filename, meta_info):
         dataframe.to_csv(f, index=False)
 
 if __name__ == "__main__":
-
+    
     # Get the usernames passed as an argument
     if len(sys.argv) < 7:
+        print(f"[ERROR] program argument not provided expected three argument 1st USERNAMES 2nd MONTH_START 3rd MONTH_END 4th TEAM_NAME 5th is_period 6th PERIOD")
         logging.error("[ERROR] program argument not provided expected three argument 1st USERNAMES 2nd MONTH_START 3rd MONTH_END 4th TEAM_NAME 5th is_period 6th PERIOD")
         sys.exit(1)
 
@@ -106,7 +111,7 @@ if __name__ == "__main__":
     IS_PERIOD = int(sys.argv[5])
     # extracting the period
     PERIOD = int(sys.argv[6])
-
+    print(f"************************* RUNNING monthly-audit.py for {TEAM_NAME} ********************************")
     # creating datetime object
     start_month = datetime.strptime(MONTH_START, '%Y-%m')
     if IS_PERIOD == 1:
@@ -153,6 +158,7 @@ if __name__ == "__main__":
 
     ## exported data collection
     all_Df = pd.DataFrame()
+    print(f"[INFO] Starting audit for {TEAM_NAME} from {MONTH_START} to {MONTH_END}")
     logging.debug(f'[INFO] Starting audit for {TEAM_NAME} from {MONTH_START} to {MONTH_END}')
     ## visiting all repositories to find out the contributions
     for repo in repos:
@@ -171,6 +177,7 @@ if __name__ == "__main__":
             all_Df = pd.concat([all_Df,df],ignore_index=True)
 
         except Exception as e:
+            print(f"[error] failed to audit repository {repo}")
             logging.error(f"Error occurred while auditing repository {repo}: {e}")
             continue
 
@@ -179,5 +186,6 @@ if __name__ == "__main__":
     # meta info to be added before the header
     meta_info = f'\n\nAudit Report from {MONTH_START} to {MONTH_END}\n\nTeam_Name:{TEAM_NAME}\n\n'
     save_csv_with_meta_info(all_Df, filename, meta_info)
+    print(f"[SUCCESS] Audit report generated for {TEAM_NAME} from {MONTH_START} to {MONTH_END} in ./audits/{TEAM_NAME}-{MONTH_START}-to-{MONTH_END}-audit.csv")
     logging.debug(f'[SUCCESS] Audit report generated for {TEAM_NAME} from {MONTH_START} to {MONTH_END} in ./audits/{TEAM_NAME}-{MONTH_START}-to-{MONTH_END}-audit.csv')
-   
+    print(f"************************* COMPLETED monthly-audit.py for {TEAM_NAME} ********************************")
