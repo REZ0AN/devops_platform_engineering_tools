@@ -106,7 +106,6 @@ if __name__ == "__main__":
     IS_PERIOD = int(sys.argv[5])
     # extracting the period
     PERIOD = int(sys.argv[6])
-    print(f"[INFO] Fetching data for team {TEAM_NAME} from {MONTH_START} to {MONTH_END} with is_period={IS_PERIOD} and PERIOD={PERIOD}")
 
     # creating datetime object
     start_month = datetime.strptime(MONTH_START, '%Y-%m')
@@ -126,7 +125,7 @@ if __name__ == "__main__":
 
     # get the github access token
     TOKEN = os.environ.get('GH_PAT')
-    print(f"[INFO] Using GitHub Personal Access Token for authentication{TOKEN}")
+    
     # get the current month
 
     # defining the header for REST-API get request
