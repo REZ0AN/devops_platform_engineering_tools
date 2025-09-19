@@ -1,23 +1,25 @@
 #!/bin/sh
 
 
-# Source the environment variables
-if [ -f .env ]; then
-    . ./.env
-fi
-
 ## use environment variable ORG_NAME to set the organization name
 # If ORG_NAME is not set, it will default to 'your-org-name'
 ORG_NAME="${ORG_NAME:-your-org-name}"
+
+## use environment variable TEAM_ID to set the team id
 # If TEAM_ID is not set, it will default to 'your-team-id'
 TEAM_ID="${TEAM_ID:-your-team-id}"
-## Getting the Data We Need To Process Further
-python3 get-data.py "$ORG_NAME" "$TEAM_ID"
 
+## use environment variable APPLICATION_NAME to set the application name
+# If APPLICATION_NAME is not set, it will default to 'your-application-name'
+APPLICATION_NAME="${APPLICATION_NAME:-your-application-name}"
+
+## Getting the Data We Need To Process Further
+python3 get-data.py "$ORG_NAME" "$TEAM_ID" "$APPLICATION_NAME"
 ## Now two files will be generated repos.txt and team_users.txt
 
 
 ## Use environment variable with detfault values to set iIS_PERIOD and MONTH_START, MONTH_END, PERIOD
+
 # Set Period if you want to set a period for the audit instead of month range
 # 0 for month range and 1 for period
 
