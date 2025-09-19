@@ -100,7 +100,10 @@ async def getRepoDetails(session, org_name, repo_name):
             return None  
 
 def isAuditNeeded(repo_details, application_name):
-       return (repo_details['custom_properties']['Audit'] == 'SoX' and repo_details['custom_properties']['Application'] == application_name)
+       audit_value = repo_details.get('custom_properties', {}).get('Audit').lower()
+       app_value = repo_details.get('custom_properties', {}).get('Application').lower()
+       application_name=application_name.lower()
+       return ((audit_value in ['yes','sox']) and app_value == application_name)
 
 async def getFilteredRepositories(session, repos, org_name, application_name):
     tasks = [getRepoDetails(session, org_name, repo['name']) for repo in repos]
