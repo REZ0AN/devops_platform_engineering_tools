@@ -86,10 +86,9 @@ async def audit_commits(session, config, users):
     """Audit Commits By username in a repository to a csv file."""
     # Create tasks for all users concurrently
     tasks = [get_user_commits(session, config, user) for user in users]
-    
     # Gather all results concurrently
     commit_results = await asyncio.gather(*tasks, return_exceptions=True)
-    
+    await asyncio.sleep(3)
     df = pd.DataFrame()
     for i, commits in enumerate(commit_results):
         if isinstance(commits, Exception):
@@ -203,16 +202,10 @@ async def main():
     
     # Create aiohttp session and process all repositories concurrently
     async with aiohttp.ClientSession() as session:
-        # Create tasks for all repositories
-        repo_tasks = [process_repository(session, repo, config, usernames) for repo in repos]
-        
-        # Gather all results concurrently
-        repo_results = await asyncio.gather(*repo_tasks)
-        
-        # Combine all results
-        for df in repo_results:
+        for repo in repos:
+            df = await process_repository(session, repo, config, usernames)
             all_Df = pd.concat([all_Df, df], ignore_index=True)
-
+            
     filename = f"./audits/{TEAM_NAME}-{MONTH_START}-to-{MONTH_END}-audit.csv"
     # meta info to be added before the header
     meta_info = f'\n\nAudit Report from {MONTH_START} to {MONTH_END}\n\nTeam_Name:{TEAM_NAME}\n\n'
