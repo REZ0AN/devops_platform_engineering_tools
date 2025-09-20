@@ -17,6 +17,37 @@ APPLICATION_NAME="${APPLICATION_NAME:-your-application-name}"
 python3 get-data.py "$ORG_NAME" "$TEAM_ID" "$APPLICATION_NAME"
 ## Now two files will be generated repos.txt and team_users.txt
 
+# Check if get-data.py succeeded
+if [ $? -ne 0 ]; then
+    echo "Error: get-data.py failed to execute successfully"
+    exit 1
+fi
+
+## Check if repos.txt exists and has content
+if [ ! -f "repos.txt" ]; then
+    echo "Error: repos.txt file not found. get-data.py may have failed to generate it."
+    exit 1
+fi
+
+if [ ! -s "repos.txt" ]; then
+    echo "Error: repos.txt exists but is empty. No repository data available."
+    exit 1
+fi
+
+echo "✓ repos.txt found and contains data"
+
+## Check if team_users.txt exists and has content
+if [ ! -f "team_users.txt" ]; then
+    echo "Error: team_users.txt file not found. get-data.py may have failed to generate it."
+    exit 1
+fi
+
+if [ ! -s "team_users.txt" ]; then
+    echo "Error: team_users.txt exists but is empty. No team user data available."
+    exit 1
+fi
+
+echo "✓ team_users.txt found and contains data"
 
 ## Use environment variable with detfault values to set iIS_PERIOD and MONTH_START, MONTH_END, PERIOD
 
@@ -48,12 +79,36 @@ PERIOD="${PERIOD:-3}"
 ## Auditing Based on Team name and User Under the team and also in the filtered list of 
 ## repositories by Custom_Properties Audit Field
 
+declare -A team_map
+
+# Read file and group users by team
 while IFS='=' read -r TEAM_NAME USERNAMES; do
-    # Remove leading/trailing whitespace from USERNAME
+    # Trim whitespace
+    TEAM_NAME=$(echo "$TEAM_NAME" | xargs)
     USERNAMES=$(echo "$USERNAMES" | xargs)
-    # Call the Python script for auditing with "$USERNAMES" "$MONTH_START" "$MONTH_END" "$TEAM_NAME" "$IS_PERIOD" "$PERIOD"  as arguments
-    python3 monthly-audit.py "$USERNAMES" "$MONTH_START" "$MONTH_END" "$TEAM_NAME" "$IS_PERIOD" "$PERIOD"
-    ## TODO : mailx setup
+    
+    # Append users to existing team entry
+    if [[ -n "${team_map[$TEAM_NAME]}" ]]; then
+        team_map[$TEAM_NAME]="${team_map[$TEAM_NAME]} $USERNAMES"
+    else
+        team_map[$TEAM_NAME]="$USERNAMES"
+    fi
 done < team_users.txt
+
+# Now call Python script for each team with all their users
+for TEAM_NAME in "${!team_map[@]}"; do
+
+    USERNAMES=${team_map[$TEAM_NAME]}
+    python3 monthly-audit.py "$USERNAMES" "$MONTH_START" "$MONTH_END" "$TEAM_NAME" "$IS_PERIOD" "$PERIOD" "$APPLICATION_NAME"
+
+    # Check if monthly-audit.py succeeded for this team
+    if [ $? -ne 0 ]; then
+        echo "Warning: monthly-audit.py failed for team: $TEAM_NAME"
+        # Continue with other teams instead of exiting
+    else
+        echo "✓ Successfully processed team: $TEAM_NAME"
+    fi
+
+done
 
 

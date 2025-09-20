@@ -1,7 +1,6 @@
 import asyncio
 import aiohttp
 import pandas as pd
-import numpy as np
 import sys
 import os
 from datetime import datetime
@@ -83,22 +82,24 @@ async def get_user_commits(session, config, user):
             )
 
 async def audit_commits(session, config, users):
-    """Audit Commits By username in a repository to a csv file."""
-    # Create tasks for all users concurrently
-    tasks = [get_user_commits(session, config, user) for user in users]
-    # Gather all results concurrently
-    commit_results = await asyncio.gather(*tasks, return_exceptions=True)
-    await asyncio.sleep(3)
+    """Audit Commits By username in a repository to a csv file (sequential)."""
     df = pd.DataFrame()
-    for i, commits in enumerate(commit_results):
-        if isinstance(commits, Exception):
-            print(f"[error] failed to fetch commits for user {users[i]} in repository {config['REPO_NAME']}")
-            error_logger.error(f"Error occurred while fetching commits for user {users[i]} in repository {config['REPO_NAME']}: {commits}")
+
+    for user in users:
+        try:
+            commits = await get_user_commits(session, config, user)
+            df = pd.concat([df, commits], ignore_index=True)
+            await asyncio.sleep(1)
+        except Exception as e:
+            print(f"[error] failed to fetch commits for user {user} in repository {config['REPO_NAME']}")
+            error_logger.error(
+                f"Error occurred while fetching commits for user {user} in repository {config['REPO_NAME']}: {e}"
+            )
             continue
-        df = pd.concat([df, commits], ignore_index=True)
-    
+
     df.drop_duplicates(inplace=True)
     return df
+
 
 
 # Save the DataFrame to a CSV file with custom text
@@ -133,9 +134,9 @@ async def process_repository(session, repo, config, usernames):
 
 async def main():
     # Get the usernames passed as an argument
-    if len(sys.argv) < 7:
-        print(f"[ERROR] program argument not provided expected three argument 1st USERNAMES 2nd MONTH_START 3rd MONTH_END 4th TEAM_NAME 5th is_period 6th PERIOD")
-        error_logger.error("[ERROR] program argument not provided expected three argument 1st USERNAMES 2nd MONTH_START 3rd MONTH_END 4th TEAM_NAME 5th is_period 6th PERIOD")
+    if len(sys.argv) < 8:
+        print(f"[ERROR] program argument not provided expected three argument 1st USERNAMES 2nd MONTH_START 3rd MONTH_END 4th TEAM_NAME 5th is_period 6th PERIOD 7th APPLICATION_NAME")
+        error_logger.error("[ERROR] program argument not provided expected three argument 1st USERNAMES 2nd MONTH_START 3rd MONTH_END 4th TEAM_NAME 5th is_period 6th PERIOD 7th APPLICATION_NAME")
         sys.exit(1)
 
     # extracting the username
@@ -170,7 +171,8 @@ async def main():
     # get the github access token
     TOKEN = os.environ.get('GH_PAT')
     
-    # get the current month
+    # get the APPLICATION_NAME
+    APPLICATION_NAME = sys.argv[7]
 
     # defining the header for REST-API get request
     HEADERS = {
@@ -208,7 +210,7 @@ async def main():
             
     filename = f"./audits/{TEAM_NAME}-{MONTH_START}-to-{MONTH_END}-audit.csv"
     # meta info to be added before the header
-    meta_info = f'\n\nAudit Report from {MONTH_START} to {MONTH_END}\n\nTeam_Name:{TEAM_NAME}\n\n'
+    meta_info = f'\n\nAudit Report from {MONTH_START} to {MONTH_END}\n\nTeam_Name:{TEAM_NAME}\n\nApplication: {APPLICATION_NAME}\n\n'
     save_csv_with_meta_info(all_Df, filename, meta_info)
     print(f"[SUCCESS] Audit report generated for {TEAM_NAME} from {MONTH_START} to {MONTH_END} in ./audits/{TEAM_NAME}-{MONTH_START}-to-{MONTH_END}-audit.csv")
     debug_logger.debug(f'[SUCCESS] Audit report generated for {TEAM_NAME} from {MONTH_START} to {MONTH_END} in ./audits/{TEAM_NAME}-{MONTH_START}-to-{MONTH_END}-audit.csv')
