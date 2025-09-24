@@ -1,4 +1,3 @@
-GH_TOKEN=<your_gh_pat>
-ORG_NAME=<your_org_name>
+ORG_NAME=<your_org_name_here>
 
-python3 scanner_script.py "$GH_TOKEN" "$ORG_NAME"
+python3 scanner_script.py "$GH_PAT" "$ORG_NAME"
