@@ -32,6 +32,7 @@ MONTH_END=2024-02
 IS_PERIOD=0
 PERIOD=3
 GH_PAT=<your-github-personal-access-token>
+APPLICATION_NAME=<your-application-name-here>
 ```
 
 ## Configuration Options
@@ -45,6 +46,7 @@ GH_PAT=<your-github-personal-access-token>
 | `IS_PERIOD` | Enable period-based auditing | 0 | If period based auditing needed |
 | `PERIOD` | Number of months to audit | 3 | If IS_PERIOD=1 |
 | `GH_PAT` | GitHub Personal Access Token | None | Yes |
+| `APPLICATION_NAME` | Name of Application | None | Yes |
 
 ## Usage
 

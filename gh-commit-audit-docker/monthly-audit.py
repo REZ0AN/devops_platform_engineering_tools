@@ -1,31 +1,44 @@
-import requests
+import asyncio
+import aiohttp
 import pandas as pd
-import numpy as np
 import sys
 import os
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import logging
 import calendar
-import time
 
 BASE_URL="https://api.github.com"
 
+Type = "github-api"
 ## ensuring if the error.log file exists or not
-if not os.path.exists(f'./logs/error/error-{type}-{datetime.now().strftime("%Y-%m-%d %H:%M")}.log'):
-    with open(f'./logs/error/error-{type}-{datetime.now().strftime("%Y-%m-%d %H:%M")}.log', 'w'):
+if not os.path.exists(f'./logs/error/error-{Type}-{datetime.now().strftime("%Y-%m-%d %H:%M")}.log'):
+    with open(f'./logs/error/error-{Type}-{datetime.now().strftime("%Y-%m-%d %H:%M")}.log', 'w'):
         pass
 
-if not os.path.exists(f'./logs/logs-{type}-{datetime.now().strftime("%Y-%m-%d %H:%M")}.log'):
-    with open(f'./logs/logs-{type}-{datetime.now().strftime("%Y-%m-%d %H:%M")}.log', 'w'):
+if not os.path.exists(f'./logs/logs-{Type}-{datetime.now().strftime("%Y-%m-%d %H:%M")}.log'):
+    with open(f'./logs/logs-{Type}-{datetime.now().strftime("%Y-%m-%d %H:%M")}.log', 'w'):
         pass
 
 ## configure logging file
-logging.basicConfig(filename=f'./logs/error/error-{type}-{datetime.now().strftime("%Y-%m-%d %H:%M")}.log',level=logging.ERROR,format='%(asctime)s - %(levelname)s - %(message)s')
-logging.basicConfig(filename=f'./logs/logs-{type}-{datetime.now().strftime("%Y-%m-%d %H:%M")}.log',level=logging.DEBUG,format='%(asctime)s - %(levelname)s - %(message)s')
+error_logger = logging.getLogger('error_logger')
+error_handler = logging.FileHandler(f'./logs/error/error-{Type}-{datetime.now().strftime("%Y-%m-%d %H:%M")}.log')
+error_handler.setLevel(logging.ERROR)
+error_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+error_handler.setFormatter(error_formatter)
+error_logger.addHandler(error_handler)
+error_logger.setLevel(logging.ERROR)
+
+debug_logger = logging.getLogger('debug_logger')
+debug_handler = logging.FileHandler(f'./logs/logs-{Type}-{datetime.now().strftime("%Y-%m-%d %H:%M")}.log')
+debug_handler.setLevel(logging.DEBUG)
+debug_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+debug_handler.setFormatter(debug_formatter)
+debug_logger.addHandler(debug_handler)
+debug_logger.setLevel(logging.DEBUG)
 
 
-def get_user_commits(config, user):
+async def get_user_commits(session, config, user):
     """Fetch the commits by a user in a repository."""
     commits = []
     url = f"{BASE_URL}/repos/{config['ORG_NAME']}/{config['REPO_NAME']}/commits"
@@ -34,47 +47,59 @@ def get_user_commits(config, user):
         "since": config["SINCE"],
         "until": config["UNTIL"]
     }
-    logging.debug(f'[INFO] Fetching commits for user {user} in repository {config["REPO_NAME"]}')
-    response = requests.get(url, headers=config['HEADERS'], params=params)
-
-    df = pd.DataFrame()
+    print(f"[INFO] Fetching commits for user {user} in repository {config['REPO_NAME']}")
+    debug_logger.debug(f'[INFO] Fetching commits for user {user} in repository {config["REPO_NAME"]}')
     
-    if response.status_code == 200:
-        commits = response.json()
-        if commits == []:
-            logging.debug(f'[WARNING] {user} may not a contibutor to the repository {config["REPO_NAME"]}')   
+    async with session.get(url, headers=config['HEADERS'], params=params) as response:
+        df = pd.DataFrame()
+        
+        if response.status == 200:
+            commits = await response.json()
+            if commits == []:
+                print(f"[WARNING] {user} may not a contibutor to the repository {config['REPO_NAME']}")
+                debug_logger.debug(f'[WARNING] {user} may not a contibutor to the repository {config["REPO_NAME"]}')   
+                return df
+            for commit in commits:
+                commit_data = {
+                    'organization_name': config['ORG_NAME'],
+                    'repository_name': config['REPO_NAME'],
+                    'user': user,
+                    'commit_sha': commit['sha'],
+                    'commit_date': commit['commit']['author']['date'],
+                    'commit_message': commit['commit']['message']
+                }
+                n_df = pd.DataFrame([commit_data])
+                df = pd.concat([df,n_df],ignore_index=True)
+            print(f"[SUCCESS] Commits fetched for user {user} in repository {config['REPO_NAME']}")
+            debug_logger.debug(f'[SUCCESS] Commits fetched for user {user} in repository {config["REPO_NAME"]}')
             return df
-        for commit in commits:
-            commit_data = {
-                'organization_name': config['ORG_NAME'],
-                'repository_name': config['REPO_NAME'],
-                'user': user,
-                'commit_sha': commit['sha'],
-                'commit_date': commit['commit']['author']['date'],
-                'commit_message': commit['commit']['message']
-            }
-            n_df = pd.DataFrame([commit_data])
-            df = pd.concat([df,n_df],ignore_index=True)
-        logging.debug(f'[SUCCESS] Commits fetched for user {user} in repository {config["REPO_NAME"]}')
-        return df
-    else:
-        response.raise_for_status()
+        else:
+            raise aiohttp.ClientResponseError(
+                request_info=response.request_info,
+                history=response.history,
+                status=response.status,
+                message=f"HTTP {response.status}"
+            )
 
-def audit_commits(config,users):
-
-    """Audit Commits By username in a repository to a csv file."""
+async def audit_commits(session, config, users):
+    """Audit Commits By username in a repository to a csv file (sequential)."""
     df = pd.DataFrame()
 
     for user in users:
         try:
-            commits = get_user_commits(config,user)
-            df = pd.concat([df,commits],ignore_index=True)
-            time.sleep(5)
+            commits = await get_user_commits(session, config, user)
+            df = pd.concat([df, commits], ignore_index=True)
+            await asyncio.sleep(1)
         except Exception as e:
-            logging.error(f"Error occurred while fetching commits for user {user} in repository {repo}: {e}")
+            print(f"[error] failed to fetch commits for user {user} in repository {config['REPO_NAME']}")
+            error_logger.error(
+                f"Error occurred while fetching commits for user {user} in repository {config['REPO_NAME']}: {e}"
+            )
             continue
+
     df.drop_duplicates(inplace=True)
     return df
+
 
 
 # Save the DataFrame to a CSV file with custom text
@@ -87,11 +112,31 @@ def save_csv_with_meta_info(dataframe, filename, meta_info):
         # Now write the DataFrame to the file
         dataframe.to_csv(f, index=False)
 
-if __name__ == "__main__":
+async def process_repository(session, repo, config, usernames):
+    """Process a single repository asynchronously"""
+    try:    
+        # extracting organization name and repository name from the repository link
+        ORG_NAME = repo.split("/")[-2]
+        REPO_NAME = repo.split("/")[-1].split(".")[0]
+        # adding them to config
+        repo_config = config.copy()
+        repo_config["ORG_NAME"] = ORG_NAME
+        repo_config["REPO_NAME"] = REPO_NAME
 
+        # get audit for repo
+        df = await audit_commits(session, repo_config, usernames)
+        return df
+
+    except Exception as e:
+        print(f"[error] failed to audit repository {repo}")
+        error_logger.error(f"Error occurred while auditing repository {repo}: {e}")
+        return pd.DataFrame()
+
+async def main():
     # Get the usernames passed as an argument
-    if len(sys.argv) < 7:
-        logging.error("[ERROR] program argument not provided expected three argument 1st USERNAMES 2nd MONTH_START 3rd MONTH_END 4th TEAM_NAME 5th is_period 6th PERIOD")
+    if len(sys.argv) < 8:
+        print(f"[ERROR] program argument not provided expected three argument 1st USERNAMES 2nd MONTH_START 3rd MONTH_END 4th TEAM_NAME 5th is_period 6th PERIOD 7th APPLICATION_NAME")
+        error_logger.error("[ERROR] program argument not provided expected three argument 1st USERNAMES 2nd MONTH_START 3rd MONTH_END 4th TEAM_NAME 5th is_period 6th PERIOD 7th APPLICATION_NAME")
         sys.exit(1)
 
     # extracting the username
@@ -106,8 +151,7 @@ if __name__ == "__main__":
     IS_PERIOD = int(sys.argv[5])
     # extracting the period
     PERIOD = int(sys.argv[6])
-    print(f"[INFO] Fetching data for team {TEAM_NAME} from {MONTH_START} to {MONTH_END} with is_period={IS_PERIOD} and PERIOD={PERIOD}")
-
+    print(f"************************* RUNNING monthly-audit.py for {TEAM_NAME} ********************************")
     # creating datetime object
     start_month = datetime.strptime(MONTH_START, '%Y-%m')
     if IS_PERIOD == 1:
@@ -126,8 +170,9 @@ if __name__ == "__main__":
 
     # get the github access token
     TOKEN = os.environ.get('GH_PAT')
-    print(f"[INFO] Using GitHub Personal Access Token for authentication{TOKEN}")
-    # get the current month
+    
+    # get the APPLICATION_NAME
+    APPLICATION_NAME = sys.argv[7]
 
     # defining the header for REST-API get request
     HEADERS = {
@@ -154,31 +199,22 @@ if __name__ == "__main__":
 
     ## exported data collection
     all_Df = pd.DataFrame()
-    logging.debug(f'[INFO] Starting audit for {TEAM_NAME} from {MONTH_START} to {MONTH_END}')
-    ## visiting all repositories to find out the contributions
-    for repo in repos:
-        try:    
-            # extracting organization name and repository name from the repository link
-            ORG_NAME = repo.split("/")[-2]
-            REPO_NAME = repo.split("/")[-1].split(".")[0]
-            # adding them to config
-            config["ORG_NAME"]=ORG_NAME
-            config["REPO_NAME"]=REPO_NAME
-
-            # get audit for repo
-            df = audit_commits(config,usernames)
-
-            # concat the results for the global data collection
-            all_Df = pd.concat([all_Df,df],ignore_index=True)
-
-        except Exception as e:
-            logging.error(f"Error occurred while auditing repository {repo}: {e}")
-            continue
-
-
+    print(f"[INFO] Starting audit for {TEAM_NAME} from {MONTH_START} to {MONTH_END}")
+    debug_logger.debug(f'[INFO] Starting audit for {TEAM_NAME} from {MONTH_START} to {MONTH_END}')
+    
+    # Create aiohttp session and process all repositories concurrently
+    async with aiohttp.ClientSession() as session:
+        for repo in repos:
+            df = await process_repository(session, repo, config, usernames)
+            all_Df = pd.concat([all_Df, df], ignore_index=True)
+            
     filename = f"./audits/{TEAM_NAME}-{MONTH_START}-to-{MONTH_END}-audit.csv"
     # meta info to be added before the header
-    meta_info = f'\n\nAudit Report from {MONTH_START} to {MONTH_END}\n\nTeam_Name:{TEAM_NAME}\n\n'
+    meta_info = f'\n\nAudit Report from {MONTH_START} to {MONTH_END}\n\nTeam_Name:{TEAM_NAME}\n\nApplication: {APPLICATION_NAME}\n\n'
     save_csv_with_meta_info(all_Df, filename, meta_info)
-    logging.debug(f'[SUCCESS] Audit report generated for {TEAM_NAME} from {MONTH_START} to {MONTH_END} in ./audits/{TEAM_NAME}-{MONTH_START}-to-{MONTH_END}-audit.csv')
-   
+    print(f"[SUCCESS] Audit report generated for {TEAM_NAME} from {MONTH_START} to {MONTH_END} in ./audits/{TEAM_NAME}-{MONTH_START}-to-{MONTH_END}-audit.csv")
+    debug_logger.debug(f'[SUCCESS] Audit report generated for {TEAM_NAME} from {MONTH_START} to {MONTH_END} in ./audits/{TEAM_NAME}-{MONTH_START}-to-{MONTH_END}-audit.csv')
+    print(f"************************* COMPLETED monthly-audit.py for {TEAM_NAME} ********************************")
+
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -1,15 +1,21 @@
+# Azure DevOps to GitHub Migration Tool
 
-# Migrating From Azure To GitHub
+A comprehensive toolkit for migrating repositories from Azure DevOps (ADO) to GitHub. This tool supports two migration approaches:
+- Migration with team assignments
+- Migration without team assignments
 
-A custom script to migrate repository from ADO to Github. First we have a csv of the ADO repositories from the ADO organization projects sorted by last commit date. From that list we have migrated those repositories in two methods assigning team in github and without assigning team and if any error occurs we can find the repositories along with their project name. We have used ado2gh to single repo migration from azure to github. ADO2GH is a github cli extension.
+## Features
 
+- Batch migration of repositories from ADO to GitHub
+- CSV-based repository tracking and error logging
+- Support for team permissions migration
+- Post-migration validation tools
+- Detailed error reporting and recovery options
 
+## Prerequisites
 
-
-## Installation Prerequisite
-
-Install GitHub CLI (for linux)
-
+### GitHub CLI Installation
+For Ubuntu/Debian-based systems:
 ```bash
 type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
 curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
@@ -18,34 +24,92 @@ curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo 
 && sudo apt update \
 && sudo apt install gh -y
 ```
-Install GitHub CLI extension (for linux)
+
+### GitHub CLI Extension
 ```bash
 gh extension install github/gh-ado2gh
 ```
 
-## Environment Variables
+## Configuration
 
-To run this script you will need to add some environment variables (here shown for linux).
-
-`Set Environment Variables by running below commands`
-
-`export GH_PAT="your_github_personal_access_token(must be classic one)"`
-
-`export ADO_PAT="your_azure_personal_access_token"`
-
-After Setting environment variables you should authenticate with your github account by using below  command.
-
+### Environment Variables
+Set the following environment variables:
 ```bash
-   gh auth login
+export GH_PAT="your_github_personal_access_token"  # Must be a classic token
+export ADO_PAT="your_azure_personal_access_token"
 ```
-# Running Script
-First Unzip the folder called "MigrationWithAssigningTeam". Make sure you have created a file named "error_log.csv". Then open the terminal within this folder. Change the permission for the "migrationWithAssigningTeam.sh" script.
-```bash 
-chmod +x ./migrateWithAssinginTeam.sh
-```
-now run the script by below command.
+
+### GitHub Authentication
 ```bash
-    ./migrateWithAssigningTeam.sh
+gh auth login
 ```
 
+## Usage
 
+### Migration with Team Assignment
+
+1. Extract the migration package:
+```bash
+unzip MigrationWithAssigningTeam.zip
+```
+
+2. Set up execution permissions:
+```bash
+chmod +x ./MigrationWithAssigningTeam/migrationWithAssigningTeam.sh
+```
+
+3. Run the migration:
+```bash
+cd MigrationWithAssigningTeam
+./migrationWithAssigningTeam.sh
+```
+
+### Migration without Team Assignment
+
+1. Extract the migration package:
+```bash
+unzip MigrationWithoutAssigningTeam.zip
+```
+
+2. Set up execution permissions:
+```bash
+chmod +x ./MigrationWithoutAssigningTeam/migrationWithoutAssigningTeam.sh
+```
+
+3. Run the migration:
+```bash
+cd MigrationWithoutAssigningTeam
+./migrationWithoutAssigningTeam.sh
+```
+
+## Project Structure
+
+- `MigrationWithAssigningTeam/` - Scripts and configs for team-aware migration
+- `MigrationWithoutAssigningTeam/` - Scripts for basic repository migration
+- `checkAfterMigration/` - Post-migration validation tools
+
+## Input Files
+
+- `latestCommitInfo.csv` - Source repository list with commit information
+- `latestCommitInfoProjectRepoNames.csv` - Processed repository data
+
+## Output Files
+
+- `error_log.csv` - Migration error reports
+- `migrationFailedToTheseRepositories.csv` - Failed migration attempts
+- `orgRepositories.csv` - Successfully migrated repositories
+
+## Validation
+
+Use the checker tools in `checkAfterMigration/` to verify successful migrations:
+```bash
+cd MigrationWithoutAssigningTeam/checkAfterMigration
+./checkForTheReposWhenMigrationFailed.sh
+```
+
+## Troubleshooting
+
+1. Verify environment variables are set correctly
+2. Check error logs in `error_log.csv`
+3. Run validation scripts to identify failed migrations
+4. Ensure GitHub CLI is authenticated
