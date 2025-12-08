@@ -1,0 +1,53 @@
+kind: pipeline
+spec:
+  stages:
+  - type: ci
+    spec:
+      volumes:
+        - name: dockersock
+          type: host
+          spec:
+            path: /var/run/docker.sock
+
+      steps:
+      - name: build-and-run-audit
+        type: run
+        spec:
+          container: 
+            image: docker:latest
+          envs:
+            GH_PAT: ${{ secrets.get("gh_pat") }}
+            ORG_NAME: ${{ secrets.get("org_name") }}
+            MONTH_START: ${{ secrets.get("month_start") }}
+            MONTH_END: ${{ secrets.get("month_end") }}
+            IS_PERIOD: ${{ secrets.get("is_period") }}
+            PERIOD: ${{ secrets.get("period") }}
+            APPLICATION_NAME: ${{ secrets.get("application_name") }}
+          mount:
+            - name: dockersock
+              path: /var/run/docker.sock
+          script: |
+            set -e
+
+            echo "=== Checking Docker ==="
+            docker version
+            docker info
+
+            echo "=== Injecting Secrets ==="
+            cp .env.example .env
+
+            sed -i "s#__SECRET_GH_PAT__#${GH_PAT}#g" .env
+            sed -i "s#__SECRET_ORG_NAME__#${ORG_NAME}#g" .env
+            sed -i "s#__SECRET_MONTH_START__#${MONTH_START}#g" .env
+            sed -i "s#__SECRET_MONTH_END__#${MONTH_END}#g" .env
+            sed -i "s#__SECRET_IS_PERIOD__#${IS_PERIOD}#g" .env
+            sed -i "s#__SECRET_PERIOD__#${PERIOD}#g" .env
+            sed -i "s#__SECRET_APPLICATION_NAME__#${APPLICATION_NAME}#g" .env
+
+            echo "=== Building Image ==="
+            docker build -t github-audit:latest .
+
+            docker run --rm --env-file .env github-audit:latest
+            RC=$?
+            echo "Container exited with $RC"
+            exit $RC
