@@ -1,5 +1,12 @@
-#!/bin/sh
+#!/bin/bash
 
+## .env loading
+if [ -f .env ]; then
+    source .env
+    echo "✓ Loaded environment variables from .env file"
+else
+    echo "⚠️ .env file not found. Proceeding with existing environment variables."
+fi
 
 ## use environment variable ORG_NAME to set the organization name
 # If ORG_NAME is not set, it will default to 'your-org-name'
@@ -14,12 +21,12 @@ TEAM_ID="${TEAM_ID:-your-team-id}"
 APPLICATION_NAME="${APPLICATION_NAME:-your-application-name}"
 
 ## Getting the Data We Need To Process Further
-python3 get-data.py "$ORG_NAME" "$TEAM_ID" "$APPLICATION_NAME"
+python3 get_data.py "$ORG_NAME" "$TEAM_ID" "$APPLICATION_NAME"
 ## Now two files will be generated repos.txt and team_users.txt
 
 # Check if get-data.py succeeded
 if [ $? -ne 0 ]; then
-    echo "Error: get-data.py failed to execute successfully"
+    echo "Error: get_data.py failed to execute successfully"
     exit 1
 fi
 
@@ -99,11 +106,11 @@ done < team_users.txt
 for TEAM_NAME in "${!team_map[@]}"; do
 
     USERNAMES=${team_map[$TEAM_NAME]}
-    python3 monthly-audit.py "$USERNAMES" "$MONTH_START" "$MONTH_END" "$TEAM_NAME" "$IS_PERIOD" "$PERIOD" "$APPLICATION_NAME"
+    python3 monthly_audit.py "$USERNAMES" "$MONTH_START" "$MONTH_END" "$TEAM_NAME" "$IS_PERIOD" "$PERIOD" "$APPLICATION_NAME"
 
     # Check if monthly-audit.py succeeded for this team
     if [ $? -ne 0 ]; then
-        echo "Warning: monthly-audit.py failed for team: $TEAM_NAME"
+        echo "Warning: monthly_audit.py failed for team: $TEAM_NAME"
         # Continue with other teams instead of exiting
     else
         echo "✓ Successfully processed team: $TEAM_NAME"
