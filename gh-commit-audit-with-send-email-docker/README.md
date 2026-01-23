@@ -13,6 +13,7 @@ This repository generates GitHub commit audit CSVs per team and can optionally e
 Populate a `.env` file (copy from `.env.example`) before running locally or when passing `--env-file` to Docker. Key variables:
 
 - `ORG_NAME`: GitHub organization to target.
+- `TEAM_ID`: Github team from which you want to get the users from.
 - `MONTH_START` / `MONTH_END`: start/end months for audits in `YYYY-MM` format.
 - `IS_PERIOD`: `0` = use month range, `1` = use `PERIOD` (last N months from `MONTH_START`).
 - `PERIOD`: number of months when `IS_PERIOD=1`.
