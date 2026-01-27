@@ -28,15 +28,7 @@ sed -i "s/MAIL_USER/${SMTP_USER}/g" $MSMTP_CONFIG
 sed -i "s/MAIL_PASSWORD/${SMTP_PASSWORD}/g" $MSMTP_CONFIG
 
 cat $MSMTP_CONFIG
-# Test MSMTP configuration
-echo "[INFO] Testing MSMTP configuration..."
-if echo -e "Subject: MSMTP Test\n\nThis is a test message from MSMTP" | \
-   msmtp --from=$SMTP_FROM $SMTP_FROM >/dev/null 2>&1; then
-    echo "[SUCCESS] Test email sent successfully"
-else
-    echo "[ERROR] Failed to send test email"
-    exit 1
-fi
+
 
 ## use environment variable ORG_NAME to set the organization name
 # If ORG_NAME is not set, it will default to 'your-org-name'
@@ -155,6 +147,16 @@ SEND_EMAIL="${SEND_EMAIL:-false}"
 
 
 if [ "$SEND_EMAIL" = "true" ]; then
+
+    # Test MSMTP configuration
+    echo "[INFO] Testing MSMTP configuration..."
+    if echo -e "Subject: MSMTP Test\n\nThis is a test message from MSMTP" | \
+       msmtp --from=$SMTP_FROM $SMTP_FROM >/dev/null 2>&1; then
+        echo "[SUCCESS] Test email sent successfully"
+    else
+        echo "[ERROR] Failed to send test email"
+        exit 1
+    fi
     
     echo ""
     echo "=================================================="
