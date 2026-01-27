@@ -23,8 +23,6 @@ COPY monthly_audit.py /app/
 COPY audit_gen.sh /app/
 COPY requirements.txt /app/
 COPY .env /app/
-COPY repos.txt /app/
-COPY team_users.txt /app/
 COPY email_recipients.txt /app/
 COPY send_email.sh /app/
 COPY msmtprc /etc/msmtprc 
