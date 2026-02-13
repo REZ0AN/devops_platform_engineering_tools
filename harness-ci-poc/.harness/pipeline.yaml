@@ -1,0 +1,136 @@
+pipeline:
+  name: hello-pypy-ci
+  identifier: hellopypyci
+  projectIdentifier: Python_CI_Demo
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: harness_ci_poc_github_connector
+        build: <+input>
+  stages:
+    - stage:
+        name: Run Python Script
+        identifier: Run_Python_Script
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform:
+            os: MacOS
+            arch: Arm64
+          runtime:
+            type: Docker
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Run Python Hello
+                  identifier: Run_Python_Hello
+                  spec:
+                    shell: Sh
+                    command: |-
+                      echo "Running Python script..."
+                      python3 hello-pypy.py "<+pipeline.name>" "<+pipeline.variables.user_name>: <+pipeline.variables.message>"
+              - step:
+                  type: Run
+                  name: Send Email with Python
+                  identifier: Send_Email_Python
+                  spec:
+                    shell: Sh
+                    command: |-
+                      # Install required package
+                      pip3 install --quiet --no-cache-dir secure-smtplib
+
+                      # Create email script
+                      cat > /tmp/send_email.py << 'EOF'
+                      import smtplib
+                      from email.mime.multipart import MIMEMultipart
+                      from email.mime.text import MIMEText
+                      from email.mime.base import MIMEBase
+                      from email import encoders
+                      import sys
+                      import os
+
+                      # Get credentials from arguments
+                      smtp_user = os.environ.get('SMTP_USER')
+                      smtp_pass = os.environ.get('SMTP_PASS')
+                      recipients = os.environ.get('RECIPIENTS').split(',')
+
+                      # Create message
+                      msg = MIMEMultipart()
+                      msg['From'] = smtp_user
+                      msg['To'] = ', '.join(recipients)
+                      msg['Subject'] = 'Pipeline Report with Attachments - <+pipeline.name>'
+
+                      # Email body
+                      body = """Hello Team,
+
+                      Pipeline execution completed successfully.
+
+                      Pipeline Details:
+                      - Pipeline Name: <+pipeline.name>
+                      - Execution ID: <+pipeline.executionId>
+                      - Branch: <+codebase.branch>
+
+                      Please find attached files.
+
+                      Best regards,
+                      Harness CI Automation"""
+
+                      msg.attach(MIMEText(body, 'plain'))
+
+                      # Attach files
+                      files_to_attach = ['recipients.txt', 'README.md']
+
+                      for filename in files_to_attach:
+                          try:
+                              filepath = f'{filename}'
+                              with open(filepath, 'rb') as f:
+                                  part = MIMEBase('application', 'octet-stream')
+                                  part.set_payload(f.read())
+                                  encoders.encode_base64(part)
+                                  part.add_header('Content-Disposition', f'attachment; filename={filename}')
+                                  msg.attach(part)
+                                  print(f'✓ Attached {filename}')
+                          except Exception as e:
+                              print(f'✗ Could not attach {filename}: {e}')
+
+                      # Send email
+                      try:
+                          print(f'Connecting to smtp.gmail.com:587...')
+                          server = smtplib.SMTP('smtp.gmail.com', 587)
+                          server.starttls()
+                          print(f'Logging in as {smtp_user}...')
+                          server.login(smtp_user, smtp_pass)
+                          print(f'Sending email to {len(recipients)} recipient(s)...')
+                          server.send_message(msg)
+                          server.quit()
+                          print('✓ Email sent successfully!')
+                      except Exception as e:
+                          print(f'✗ Failed to send email: {e}')
+                          sys.exit(1)
+                      EOF
+
+                      # Run the script
+                      export SMTP_USER="<+secrets.getValue("SMTP_USER")>"
+                      export SMTP_PASS="<+secrets.getValue("SMTP_PASSWORD")>"
+                      export RECIPIENTS="<+pipeline.variables.email_recipients>"
+
+                      python /tmp/send_email.py
+        delegateSelectors:
+          - darwin-arm64
+  variables:
+    - name: user_name
+      type: String
+      required: true
+      value: <+input>
+    - name: message
+      type: String
+      required: true
+      value: <+input>
+    - name: email_recipients
+      type: String
+      required: true
+      value: <+input>
