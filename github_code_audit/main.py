@@ -121,6 +121,7 @@ from tqdm.asyncio import tqdm as atqdm
 ORG_NAME    = os.environ.get("GITHUB_ORG",   "your-org-name")
 TOKEN       = os.environ.get("GITHUB_TOKEN", "your-token-here")
 OUTPUT_CSV  = "loc_audit.csv"
+OUTPUT_TXT = "loc_audit_summary.txt"
 
 # How many repos to clone/process in parallel.
 # Keep ≤ 5 to avoid hammering GitHub's rate limits.
@@ -485,6 +486,19 @@ def write_csv(rows: list[BranchResult], path: str) -> None:
             w.writerow([r.org, r.repo, r.branch, r.loc])
     print(f"\n✅ CSV written → {path}  ({len(rows)} rows)")
 
+def write_summary(rows: list[BranchResult], repos: list[dict], path: str) -> None:
+    grand_total = sum(r.loc for r in rows)
+    lines = [
+        "=" * 65,
+        f"  Organization  : {ORG_NAME}",
+        f"  Repositories  : {len(repos)}",
+        f"  Branches      : {len(rows)}",
+        f"  GRAND TOTAL   : {grand_total:,} LOC  (all branches, comments stripped)",
+        "=" * 65,
+    ]
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    print(f"✅ Summary written → {path}")
 
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 
@@ -526,7 +540,7 @@ async def main() -> None:
     print(f"  Branches      : {len(all_rows)}")
     print(f"  GRAND TOTAL   : {grand_total:,} LOC  (all branches, comments stripped)")
     print(f"{'='*65}\n")
-
+    write_summary(all_rows, repos, OUTPUT_TXT)
     write_csv(all_rows, OUTPUT_CSV)
 
 
