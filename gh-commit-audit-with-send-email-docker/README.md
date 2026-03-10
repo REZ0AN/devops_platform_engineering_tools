@@ -34,9 +34,25 @@ Sensitive values (like `GH_PAT` and SMTP credentials) should not be committed to
 The repository provides `msmtprc` which contains placeholders (e.g. `MAIL_HOST`, `MAIL_USER`, `MAIL_PASSWORD`, `SOURCE_NAME`). At runtime `audit_gen.sh` will replace those using `sed` and then test `msmtp` by sending a small test message. Ensure the file permissions are secure (recommended `chmod 600 msmtprc`).
 
 ## Harness pipeline (overview & local simulation)
-.harness/harness-pipeline.yaml defines the CI/CD workflow used with Harness. It typically performs the same steps you can run locally: install dependencies, build the Docker image, and run tests or the audit container.
 
-To simulate the pipeline locally, run the same commands the pipeline would run (build image, then run container). The Docker instructions below mirror what a Harness CI job would perform.
+The `.harness/harness-pipeline.yaml` defines a CI/CD pipeline for Harness that automates the GitHub commit audit process. The pipeline clones the repository, populates a `.env` file and `.email_recipients.txt` from input variables and secrets, checks for and builds the Docker image if needed, and runs the audit container.
+
+The pipeline requires the following input variables with their expected formats:
+
+- `ORG_NAME`: GitHub organization name (string, e.g., "myorg")
+- `TEAM_ID`: GitHub team ID (string, e.g., "team-slug")
+- `MONTH_START`: Start month in YYYY-MM format (e.g., "2024-04")
+- `MONTH_END`: End month in YYYY-MM format (e.g., "2024-04")
+- `IS_PERIOD`: "0" for month range, "1" for period mode
+- `PERIOD`: Positive integer for number of months (e.g., "3")
+- `APPLICATION_NAME`: Name for reports (string, e.g., "My App Audit")
+- `SEND_EMAIL`: "true" to send emails, "false" otherwise
+- `EMAIL_SUBJECT`: Email subject prefix (string, e.g., "Audit Report")
+- `EMAIL_RECIPIENTS`: Comma-separated email addresses (e.g., "user1@example.com,user2@example.com")
+
+Sensitive values like `GH_PAT` and SMTP credentials are provided via Harness secrets.
+
+To simulate the pipeline locally, create a `.env` file with the above variables (using the same names), build the Docker image, and run the container as described in the Docker section below.
 
 ## Build and run with Docker (recommended)
 Prefer mounting `msmtprc` and passing the environment at runtime instead of baking secrets into the image.
@@ -79,5 +95,4 @@ docker run --rm -it --env-file .env -v "$(pwd)":/app gh-commit-audit:latest /bin
 ## Security notes
 - Do NOT commit `.env` with secrets to source control.
 - Use CI/CD secret stores (Harness secrets, GitHub Actions secrets, etc.) for `GH_PAT` and SMTP credentials in pipelines.
-
 

@@ -1,47 +1,130 @@
-kind: pipeline
-spec:
+pipeline:
+  name: ci-pipeline
+  identifier: ci_pipeline
+  projectIdentifier: github_commit_audit
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: GithubCommitAudit
+        build: <+input>
   stages:
-  - type: ci
-    spec:
-      volumes:
-        - name: dockersock
-          type: host
-          spec:
-            path: /var/run/docker.sock
-
-      steps:
-      - name: build-and-run-audit
-        type: run
+    - stage:
+        name: Run Github Commit Audit Scripts
+        identifier: run_github_commit_audit_scripts
+        type: CI
         spec:
-          container: 
-            image: docker:latest
-          envs:
-            GH_PAT: ${{ secrets.get("gh_pat") }}
-            SMTP_USER: ${{ secrets.get("smtp_user") }}
-            SMTP_PASSWORD: ${{ secrets.get("smtp_password") }}
-            SMTP_FROM: ${{ secrets.get("smtp_from") }}
-          mount:
-            - name: dockersock
-              path: /var/run/docker.sock
-          script: |
-            set -e
+          cloneCodebase: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Docker
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Build and Run Docker Container for github-commit-audit
+                  identifier: build_run_docker_container_github_commit_audit
+                  spec:
+                    shell: Sh
+                    command: |-
 
-            echo "=== Checking Docker ==="
-            docker version
-            docker info
+                      trap 'rm -f .env email_recipients.txt' EXIT
 
-            echo "=== Injecting Secrets ==="
-            cp .env.example .env
+                      echo "[INFO] Populating .env file"
+                      cat > .env << 'EOF'
+                      ORG_NAME=<+pipeline.variables.ORG_NAME>
+                      MONTH_START=<+pipeline.variables.MONTH_START>
+                      MONTH_END=<+pipeline.variables.MONTH_END>
+                      IS_PERIOD=<+pipeline.variables.IS_PERIOD>
+                      TEAM_ID=<+pipeline.variables.TEAM_ID>
+                      PERIOD=<+pipeline.variables.PERIOD>
+                      GH_PAT=<+secrets.getValue("GH_PAT")>
+                      APPLICATION_NAME=<+pipeline.variables.APPLICATION_NAME>
+                      SEND_EMAIL=<+pipeline.variables.SEND_EMAIL>
+                      EMAIL_RECIPIENTS_FILE=./.email_recipients.txt
+                      EMAIL_SUBJECT=<+pipeline.variables.EMAIL_SUBJECT>
+                      SEND_MODE=<+secrets.getValue("SEND_MODE")>
+                      SMTP_HOST=<+secrets.getValue("SMTP_HOST")>
+                      SMTP_PORT=<+secrets.getValue("SMTP_PORT")>
+                      SMTP_USER=<+secrets.getValue("SMTP_USER")>
+                      SMTP_PASSWORD=<+secrets.getValue("SMTP_PASSWORD")>
+                      SMTP_FROM=<+secrets.getValue("SMTP_FROM")>
+                      SMTP_SOURCE_NAME=<+secrets.getValue("SMTP_SOURCE_NAME")>
+                      EOF
 
-            sed -i "s#__SECRET_GH_PAT__#${GH_PAT}#g" .env
-            sed -i "s#__SECRET_SMTP_USER__#${SMTP_USER}#g" .env
-            sed -i "s#__SECRET_SMTP_PASSWORD__#${SMTP_PASSWORD}#g" .env
-            sed -i "s#__SECRET_SMTP_FROM__#${SMTP_FROM}#g" .env
+                      echo "[INFO] Populating email_recipients.txt file"
+                      RAW_RECIPIENTS='<+pipeline.variables.EMAIL_RECIPIENTS>'
+                      printf '%s' "$RAW_RECIPIENTS" | tr ',' '\n' > ./.email_recipients.txt
 
-            echo "=== Building Image ==="
-            docker build -t github-audit:latest .
 
-            docker run --rm --env-file .env github-audit:latest
-            RC=$?
-            echo "Container exited with $RC"
-            exit $RC
+                      # Check if the image exists locally
+                      if [ -z "$(docker images -q gh-commit-audit:latest 2> /dev/null)" ]; then
+                        echo "[INFO] Image not found. Building..."
+                        docker build -t gh-commit-audit:latest .
+                      else
+                        echo "[INFO] Image gh-commit-audit:latest already exists. Skipping build."
+                      fi
+
+                      # Run the container
+                      echo "[INFO] Starting container..."
+                      docker run --rm --env-file .env --name gh-cmt-audit gh-commit-audit:latest
+        delegateSelectors:
+          - linux-amd64
+          - linux
+          - x86_64
+  variables:
+    - name: ORG_NAME
+      type: String
+      required: true
+      value: <+input>
+    - name: TEAM_ID
+      type: String
+      required: true
+    - name: MONTH_START
+      type: String
+      required: true
+      description: "Expected format: YYYY-MM (e.g 2024-04)"
+      value: <+input>
+    - name: MONTH_END
+      type: String
+      required: true
+      description: "Expected format: YYYY-MM (e.g 2024-04)"
+      value: <+input>
+    - name: IS_PERIOD
+      type: String
+      required: true
+      description: Allowed values 0 or 1
+      allowedValues:
+        - "0"
+        - "1"
+      value: <+input>
+    - name: PERIOD
+      type: String
+      required: true
+      description: Any positive integer number
+      value: <+input>
+    - name: APPLICATION_NAME
+      type: String
+      required: true
+      value: <+input>
+    - name: SEND_EMAIL
+      type: String
+      required: true
+      description: Allowed values true or false
+      allowedValues:
+        - "true"
+        - "false"
+      value: <+input>
+    - name: EMAIL_SUBJECT
+      type: String
+      required: true
+      value: <+input>
+    - name: EMAIL_RECIPIENTS
+      description: Expected comma separated email addresses
+      type: String
+      required: true
+      value: <+input>

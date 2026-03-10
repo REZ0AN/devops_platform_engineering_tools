@@ -5,6 +5,7 @@ MSMTP_CONFIG="/etc/msmtprc"
 
 echo "[INFO] Configuring MSMTP..."
 
+
 # Check required variables
 if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASSWORD" ]; then
     echo "[ERROR] SMTP_USER and SMTP_PASSWORD must be set in .env file"
@@ -13,6 +14,7 @@ fi
 
 
 # Set defaults
+SMTP_SOURCE_NAME="${SMTP_SOURCE_NAME:-gmail}"
 SMTP_HOST="${SMTP_HOST:-smtp.gmail.com}"
 SMTP_PORT="${SMTP_PORT:-587}"
 SMTP_FROM="${SMTP_FROM:-$SMTP_USER}"
@@ -27,7 +29,6 @@ sed -i "s/MAIL_FROM/${SMTP_FROM}/g" $MSMTP_CONFIG
 sed -i "s/MAIL_USER/${SMTP_USER}/g" $MSMTP_CONFIG
 sed -i "s/MAIL_PASSWORD/${SMTP_PASSWORD}/g" $MSMTP_CONFIG
 
-cat $MSMTP_CONFIG
 
 
 ## use environment variable ORG_NAME to set the organization name
@@ -43,6 +44,7 @@ TEAM_ID="${TEAM_ID:-your-team-id}"
 APPLICATION_NAME="${APPLICATION_NAME:-your-application-name}"
 
 # ## Getting the Data We Need To Process Further
+# for testing we won't run this
 python3 get_data.py "$ORG_NAME" "$TEAM_ID" "$APPLICATION_NAME"
 # ## Now two files will be generated repos.txt and team_users.txt
 
