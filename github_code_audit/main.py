@@ -1,107 +1,4 @@
-"""
-GitHub Organization LOC Auditor
-================================
-Counts non-blank, non-comment Lines of Code (LOC) for every branch of every
-repo in a GitHub org.  Outputs a CSV with one row per (repo, branch).
 
-Dependencies:
-    pip install aiohttp gitpython tqdm
-
-Usage:
-    export GITHUB_TOKEN=ghp_...
-    python loc_auditor.py
-"""
-
-import asyncio
-import csv
-import os
-import re
-import shutil
-import tempfile
-import time
-from dataclasses import dataclass, field
-from pathlib import Path
-
-import aiohttp
-from git import Repo
-from tqdm.asyncio import tqdm as atqdm
-
-# ─── CONFIG ───────────────────────────────────────────────────────────────────
-ORG_NAME    = os.environ.get("GITHUB_ORG",   "your-org-name")
-TOKEN       = os.environ.get("GITHUB_TOKEN", "your-token-here")
-OUTPUT_CSV  = "loc_audit.csv"
-
-# How many repos to clone/process in parallel.
-# Keep ≤ 5 to avoid hammering GitHub's rate limits.
-REPO_CONCURRENCY    = 4
-# How many branches to process in parallel inside a single repo.
-BRANCH_CONCURRENCY  = 6
-# ──────────────────────────────────────────────────────────────────────────────
-
-BASE_URL = "https://api.github.com"
-HEADERS  = {
-    "Authorization": f"Bearer {TOKEN}",
-    "Accept":        "application/vnd.github.v3+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-}
-
-# ─── SKIP LISTS ───────────────────────────────────────────────────────────────
-SKIP_DIRS = frozenset({
-    ".git", "node_modules", "vendor", "__pycache__",
-    ".idea", ".vscode", "dist", "build", "target", ".mvn",
-    "bin", "obj", ".gradle", "coverage", ".nyc_output",
-})
-
-SKIP_EXTENSIONS = frozenset({
-    # images
-    ".png", ".jpg", ".jpeg", ".gif", ".ico", ".bmp", ".webp",
-    ".tif", ".tiff", ".raw", ".psd", ".ai", ".eps",
-    # documents / office
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".xlsm",
-    ".ppt", ".pptx", ".odt", ".ods", ".odp", ".rtf",
-    # archives
-    ".zip", ".tar", ".gz", ".tgz", ".bz2", ".rar", ".7z",
-    ".jar", ".war", ".ear", ".aar",
-    # compiled / binary
-    ".class", ".pyc", ".pyo", ".o", ".a", ".so",
-    ".dll", ".exe", ".dylib", ".lib", ".apk", ".ipa", ".dex",
-    # fonts / media
-    ".ttf", ".woff", ".woff2", ".eot", ".otf",
-    ".mp3", ".mp4", ".avi", ".mov", ".wav", ".flac",
-    # data
-    ".csv", ".tsv", ".dat", ".db", ".sqlite",
-    ".rds", ".rda", ".rdata", ".sas7bdat", ".sav", ".dta",
-    ".pkl", ".parquet", ".feather",
-    # certs / keys
-    ".pem", ".crt", ".cert", ".key", ".keystore",
-    # lock / misc binary
-    ".lock", ".map", ".mo", ".pbxproj", ".ds_store",
-})
-
-# ─── LANGUAGE GROUPS ─────────────────────────────────────────────────────────
-@dataclass
-class LangGroup:
-    name:         str
-    extensions:   set[str]
-    single_line:  re.Pattern | None = None
-    block_start:  re.Pattern | None = None
-    block_end:    re.Pattern | None = None
-    inline_block: re.Pattern | None = None
-
-
-"""
-GitHub Organization LOC Auditor
-================================
-Counts non-blank, non-comment Lines of Code (LOC) for every branch of every
-repo in a GitHub org.  Outputs a CSV with one row per (repo, branch).
-
-Dependencies:
-    pip install aiohttp gitpython tqdm
-
-Usage:
-    export GITHUB_TOKEN=ghp_...
-    python loc_auditor.py
-"""
 
 import asyncio
 import csv
@@ -150,7 +47,7 @@ SKIP_EXTENSIONS = frozenset({
     ".tif", ".tiff", ".raw", ".psd", ".ai", ".eps",
     # documents / office
     ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".xlsm",
-    ".ppt", ".pptx", ".odt", ".ods", ".odp", ".rtf",
+    ".ppt", ".pptx", ".odt", ".ods", ".odp", ".rtf", ".xml",
     # archives
     ".zip", ".tar", ".gz", ".tgz", ".bz2", ".rar", ".7z",
     ".jar", ".war", ".ear", ".aar",
