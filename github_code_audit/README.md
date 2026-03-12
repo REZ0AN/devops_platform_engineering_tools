@@ -8,6 +8,7 @@ Output is a CSV (`loc_audit.csv`) with one row per `(repo, branch)`.
 ## 🛠 Prerequisites
 
 - Python 3.8+  
+- [cloc](https://github.com/AlDanial/cloc)
 - `git` installed and on your `PATH`  
 - A [GitHub personal access token](https://github.com/settings/tokens) with at least `repo`/`public_repo` scope.
 
@@ -26,8 +27,25 @@ Output is a CSV (`loc_audit.csv`) with one row per `(repo, branch)`.
    ```bash
    pip install -r requirements.txt
    ```
+3. **Install cloc**
+- macOS:
+```bash
+brew install cloc
+```
+- Ubuntu/Debian:
+```bash
+sudo apt install cloc
+```
+- Windows:
+```bash
+winget install AlDanial.Cloc
+```
+- Verify it works:
+```bash
+cloc --version
+```
 
-3. **Set environment variables**
+4. **Set environment variables**
 
    ```bash
    export GITHUB_TOKEN="ghp_…"        # your personal access token
@@ -55,7 +73,7 @@ The script will:
 
 ## ✅ Output
 
-- `loc_audit.csv` – columns: `organization,repository,branch,loc`
-- Console summary with total LOC and counts.
+- `loc_audit.csv` – columns: `organization,repository,branch,code_loc,comment_lines,blank_lines`
+- Console Organization based summary with total Repository, Branch CLOC_LOC, Comment Lines, Blank Lines counts.
 
 ---
