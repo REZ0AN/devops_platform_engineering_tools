@@ -110,7 +110,7 @@ LANGUAGE_GROUPS: list[LangGroup] = [
         _c(r'^--\[\[.*?\]\]\s*$')),
 
     LangGroup("HTML/XML",
-        {".html",".htm",".xml",".xsd",".svg",".plist",
+        {".html",".htm",".xsd",".svg",".plist",
          ".csproj",".vbproj",".fsproj",".props",".targets"},
         None, _c(r'^<!--'), _c(r'-->'), _c(r'^<!--.*?-->\s*$')),
 
@@ -339,40 +339,39 @@ async def process_repo(session: aiohttp.ClientSession,
           f"({len(branches)} branch(es))")
 
     results: list[BranchResult] = []
-    loop     = asyncio.get_running_loop()
-    tmp_dir  = tempfile.mkdtemp(prefix=f"gh_{repo_name}_")
+    loop    = asyncio.get_running_loop()
+    tmp_dir = tempfile.mkdtemp(prefix=f"gh_{repo_name}_")
 
-    async with sem:
-        try:
-            # Clone is I/O-heavy — run in executor so we don't block the loop
-            cloned_repo = await loop.run_in_executor(
-                None, _clone, auth_url, tmp_dir, default_branch)
+    try:
+        async with sem:
+            try:
+                cloned_repo = await loop.run_in_executor(
+                    None, _clone, auth_url, tmp_dir, default_branch)
 
-            # Semaphore for branch-level parallelism within this repo
-            branch_sem = asyncio.Semaphore(BRANCH_CONCURRENCY)
+                branch_sem = asyncio.Semaphore(BRANCH_CONCURRENCY)
 
-            async def _process_branch(branch: str) -> BranchResult:
-                async with branch_sem:
-                    loc = await loop.run_in_executor(
-                        None, _count_branch_loc,
-                        cloned_repo, branch, tmp_dir)
-                    print(f"      🌿 {repo_name}/{branch}: {loc:,} LOC")
-                    return BranchResult(ORG_NAME, repo_name, branch, loc)
+                async def _process_branch(branch: str) -> BranchResult:
+                    async with branch_sem:
+                        loc = await loop.run_in_executor(
+                            None, _count_branch_loc,
+                            cloned_repo, branch, tmp_dir)
+                        print(f"      🌿 {repo_name}/{branch}: {loc:,} LOC")
+                        return BranchResult(ORG_NAME, repo_name, branch, loc)
 
-            tasks   = [_process_branch(b) for b in branches]
-            results = await asyncio.gather(*tasks)
+                tasks   = [_process_branch(b) for b in branches]
+                results = await asyncio.gather(*tasks)
 
-        except Exception as e:
-            print(f"      ⚠ Skipped '{repo_name}': {e}")
-            # Still emit a row per branch with 0 so nothing is silently missing
-            results = [BranchResult(ORG_NAME, repo_name, b, 0)
-                       for b in branches]
-        finally:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+            except Exception as e:
+                print(f"      ⚠ Skipped '{repo_name}': {e}")
+                results = [BranchResult(ORG_NAME, repo_name, b, 0)
+                           for b in branches]
+    finally:
+        # Always runs — even if semaphore acquire is interrupted
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        print(f"      🗑  Cleaned up clone: {tmp_dir}")
 
     return list(results)
-
-
+                           
 # ─── CSV WRITER ───────────────────────────────────────────────────────────────
 
 def write_csv(rows: list[BranchResult], path: str) -> None:
