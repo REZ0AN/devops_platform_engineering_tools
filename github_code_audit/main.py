@@ -31,7 +31,7 @@ HEADERS  = {
     "Accept":        "application/vnd.github.v3+json",
     "X-GitHub-Api-Version": "2022-11-28",
 }
-
+ 
 
 # ─── CLOC HELPER ──────────────────────────────────────────────────────────────
 
@@ -77,7 +77,8 @@ def shallow_clone(auth_url: str, tmp_dir: str, default_branch: str) -> None:
     branch refs are available for cloc --git to switch between.
     """
     cmd = [
-        "git", "clone",
+        "git", "-c", "http.sslVerify=false",
+        "clone",
         "--depth=1",
         "--no-single-branch",
         "--quiet",
@@ -250,7 +251,8 @@ def write_summary(rows: list[BranchResult],
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 async def main() -> None:
-    connector = aiohttp.TCPConnector(limit=20)
+    ssl_context = False
+    connector = aiohttp.TCPConnector(limit=20,ssl=ssl_context)
     timeout   = aiohttp.ClientTimeout(total=60)
 
     async with aiohttp.ClientSession(
