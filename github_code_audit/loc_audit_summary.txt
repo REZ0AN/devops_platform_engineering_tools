@@ -1,8 +1,7 @@
 =================================================================
   Organization   : OrgLabThree
-  Repositories   : 2
-  Branches       : 4
-  Code LOC       : 1,167
-  Comment lines  : 132
-  Blank lines    : 209
+  Repos audited  : 2
+  Code LOC       : 1,054
+  Comment lines  : 90
+  Blank lines    : 214
 =================================================================
